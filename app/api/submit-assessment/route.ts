@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
         .join('\n'),
     };
 
+    // Justo antes de enviar el webhook (alrededor de la línea 52), agrega:
+      console.log('Webhook data being sent:', JSON.stringify(webhookData, null, 2));
+
     // 3. Enviar webhook si está configurado
     if (process.env.WEBHOOK_URL && process.env.WEBHOOK_URL !== 'temp') {
       try {
