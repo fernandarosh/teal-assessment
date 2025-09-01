@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, RotateCcw, CheckCircle2, Circle, Download } from 'lucide-react';
 
 // Importar html2pdf dinámicamente
-let html2pdf: any = null;
+let html2pdf: unknown = null;
 
 const RadarChartSVG = ({ data, size = 700 }) => {
   const centerX = size / 2;
@@ -80,9 +80,8 @@ const RadarChartSVG = ({ data, size = 700 }) => {
             textAnchor="middle"
             dominantBaseline="middle"
             fontSize="12"
-            className="text-xs sm:text-sm"
+            className="text-xs sm:text-sm font-medium tracking-wide"
             fill="#64748b"
-            className="font-medium tracking-wide"
           >
             {line}
           </text>
