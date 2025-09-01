@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       individual_exterior: data.results.quadrantAverages[1]?.value.toFixed(2) || '0',
       colectivo_interior: data.results.quadrantAverages[2]?.value.toFixed(2) || '0',
       colectivo_exterior: data.results.quadrantAverages[3]?.value.toFixed(2) || '0',
-      link_resultados: `${request.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'https://teal-assessment.vercel.app/}/results/${savedData.id}`,
+      link_resultados: `https://teal-assessment.vercel.app/results/${savedData.id}`,
       respuestas_detalladas: Object.entries(data.responses)
         .map(([pregunta, respuesta]) => `${pregunta}: ${respuesta.toUpperCase()}`)
         .join('\n'),
