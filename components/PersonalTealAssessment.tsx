@@ -1,13 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, ChevronLeft, RotateCcw, FileText, Send, CheckCircle2, Circle, Download } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ChevronRight, ChevronLeft, RotateCcw, CheckCircle2, Circle, Download } from 'lucide-react';
 
-// Importar html2pdf
-let html2pdf: any;
-if (typeof window !== 'undefined') {
-  html2pdf = require('html2pdf.js');
-}
+// Importar html2pdf dinámicamente
+let html2pdf: any = null;
 
 const RadarChartSVG = ({ data, size = 700 }) => {
   const centerX = size / 2;
@@ -184,7 +181,7 @@ const PersonalTealAssessment = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const pdfRef = useRef(null);
+ 
 
   const questions = [
     {
@@ -547,8 +544,20 @@ const PersonalTealAssessment = () => {
   };
 
 const generatePDF = async () => {
-  if (!html2pdf) {
-    alert('La funcionalidad de PDF no está disponible en este momento.');
+  try {
+    // Importar html2pdf dinámicamente solo cuando se necesite
+    if (!html2pdf && typeof window !== 'undefined') {
+      const html2pdfModule = await import('html2pdf.js');
+      html2pdf = html2pdfModule.default || html2pdfModule;
+    }
+    
+    if (!html2pdf) {
+      alert('La funcionalidad de PDF no está disponible en este momento.');
+      return;
+    }
+  } catch (error) {
+    console.error('Error loading html2pdf:', error);
+    alert('Error al cargar el generador de PDF.');
     return;
   }
 
