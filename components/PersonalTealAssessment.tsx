@@ -167,22 +167,7 @@ const RadarChartSVG = ({ data, size = 700 }) => {
   );
 };
 
-const PersonalTealAssessment = () => {
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [userInfo, setUserInfo] = useState({
-    nombre: '',
-    apellidos: '',
-    correo: ''
-  });
-  const [currentPage, setCurrentPage] = useState(0);
-  const [responses, setResponses] = useState({});
-  const [showResults, setShowResults] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
- 
-
-  const questions = [
+const questions = [
     {
       id: "autoconciencia",
       question: "¿Cómo describirías mejor tu relación con tus pensamientos y emociones en el trabajo?",
@@ -403,7 +388,27 @@ const PersonalTealAssessment = () => {
         { value: "e", text: "Estructura fractal donde cada parte contiene la esencia del todo" }
       ]
     }
-  ];
+];
+  
+const PersonalTealAssessment = () => {
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [shuffledQuestions] = useState(() => 
+    questions.map(question => ({
+      ...question,
+      options: [...question.options].sort(() => Math.random() - 0.5)
+    }))
+  );
+  const [userInfo, setUserInfo] = useState({
+    nombre: '',
+    apellidos: '',
+    correo: ''
+  });
+  const [currentPage, setCurrentPage] = useState(0);
+  const [responses, setResponses] = useState({});
+  const [showResults, setShowResults] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const colorProfiles = {
     "Rojo": {
@@ -454,7 +459,7 @@ const PersonalTealAssessment = () => {
   };
 
   const questionsPerPage = 5;
-  const totalPages = Math.ceil(questions.length / questionsPerPage);
+  const totalPages = Math.ceil(shuffledQuestions.length / questionsPerPage);
 
   const resetAssessment = () => {
     setResponses({});
@@ -512,10 +517,10 @@ const PersonalTealAssessment = () => {
     const predominantColor = colorMapping[predominantLetter];
 
     const quadrants = [
-      { questions: questions.slice(0, 4), name: "Individual - Interior" },
-      { questions: questions.slice(4, 9), name: "Individual - Exterior" },
-      { questions: questions.slice(9, 14), name: "Colectivo - Interior" },
-      { questions: questions.slice(14, 20), name: "Colectivo - Exterior" }
+      { questions: shuffledQuestions.slice(0, 4), name: "Individual - Interior" },
+      { questions: shuffledQuestions.slice(4, 9), name: "Individual - Exterior" },
+      { questions: shuffledQuestions.slice(9, 14), name: "Colectivo - Interior" },
+      { questions: shuffledQuestions.slice(14, 20), name: "Colectivo - Exterior" }
     ];
 
     const quadrantAverages = quadrants.map(quadrant => {
@@ -904,8 +909,8 @@ const generatePDF = async () => {
 
   const getCurrentPageResponses = () => {
     const startIndex = currentPage * questionsPerPage;
-    const endIndex = Math.min(startIndex + questionsPerPage, questions.length);
-    const currentQuestions = questions.slice(startIndex, endIndex);
+    const endIndex = Math.min(startIndex + questionsPerPage, shuffledQuestions.length);
+    const currentQuestions = shuffledQuestions.slice(startIndex, endIndex);
     return currentQuestions.filter(q => responses[q.id]).length;
   };
 
@@ -1126,8 +1131,8 @@ if (showResults) {
 }
 
 const startIndex = currentPage * questionsPerPage;
-const endIndex = Math.min(startIndex + questionsPerPage, questions.length);
-const currentQuestions = questions.slice(startIndex, endIndex);
+const endIndex = Math.min(startIndex + questionsPerPage, shuffledQuestions.length);
+const currentQuestions = shuffledQuestions.slice(startIndex, endIndex);
 
 return (
   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -1146,14 +1151,14 @@ return (
             {currentPage + 1} de {totalPages}
           </span>
           <span className="text-sm text-slate-500">
-            {getTotalResponses()}/{questions.length} completadas
+            {getTotalResponses()}/{shuffledQuestions.length} completadas
           </span>
         </div>
         
         <div className="w-full h-1 bg-slate-200 rounded-full overflow-hidden">
           <div 
             className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out" 
-            style={{ width: `${(getTotalResponses() / questions.length) * 100}%` }}
+            style={{ width: `${(getTotalResponses() / shuffledQuestions.length) * 100}%` }}
           ></div>
         </div>
       </div>
