@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, RotateCcw, CheckCircle2, Circle, Download } from 'lucide-react';
-import SimpleTurnstile from './SimpleTurnstile';
-
 
 // Importar html2pdf dinámicamente
 let html2pdf: unknown = null;
@@ -1058,14 +1056,14 @@ if (showWelcome) {
               )}
             </div>
 
-            {/* Turnstile CAPTCHA */}
+            {/* Turnstile CAPTCHA - Siempre visible y funcional */}
             <div className="pt-4">
               <label className="block text-sm font-medium text-slate-700 mb-3">
                 Verificación de seguridad
               </label>
               {isClient && (
                 <SimpleTurnstile
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAB3KeyEN4HDKlMUx"}
+                  siteKey="0x4AAAAAAB3KeyEN4HDKlMUx"
                   onSuccess={(token) => {
                     setTurnstileToken(token);
                     setTurnstileError('');

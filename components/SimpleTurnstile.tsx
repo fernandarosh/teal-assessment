@@ -10,123 +10,76 @@ interface TurnstileProps {
 
 export default function SimpleTurnstile({ siteKey, onSuccess, onError, onExpire }: TurnstileProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasRendered, setHasRendered] = useState(false);
 
   useEffect(() => {
-    console.log('=== TURNSTILE DEBUG ===');
-    console.log('Site Key:', siteKey);
-    console.log('Domain:', window.location.hostname);
-    console.log('Full URL:', window.location.href);
+    if (hasRendered) return;
 
-    // Verificar que tenemos site key
-    if (!siteKey || siteKey === 'undefined') {
-      setStatus('error');
-      setErrorMessage('Site key no configurada');
-      return;
-    }
-
-    // Cargar script
-    const existingScript = document.querySelector('script[src*="turnstile"]');
-    if (!existingScript) {
-      const script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
-      script.async = true;
-
-      // Callback global para cuando el script carga
-      (window as any).onTurnstileLoad = () => {
-        console.log('Turnstile script loaded');
-        setStatus('ready');
-      };
-
-      script.onerror = () => {
-        console.error('Failed to load Turnstile script');
-        setStatus('error');
-        setErrorMessage('Error cargando script de Cloudflare');
-      };
-
-      document.head.appendChild(script);
-    } else {
-      setStatus('ready');
-    }
-
-    return () => {
-      delete (window as any).onTurnstileLoad;
-    };
-  }, [siteKey]);
-
-  useEffect(() => {
-    if (status !== 'ready' || !ref.current) return;
-
-    console.log('Attempting to render Turnstile widget');
-    
-    let widget: string | undefined;
-
-    const render = () => {
-      if (window.turnstile && ref.current && !widget) {
-        try {
-          widget = window.turnstile.render(ref.current, {
-            sitekey: siteKey,
-            callback: (token: string) => {
-              console.log('Turnstile success, token:', token.substring(0, 20) + '...');
-              onSuccess(token);
-            },
-            'error-callback': (error: any) => {
-              console.error('Turnstile error callback:', error);
-              setErrorMessage(`Error de Turnstile: ${error}`);
-              if (onError) onError();
-            },
-            'expired-callback': () => {
-              console.log('Turnstile expired');
-              if (onExpire) onExpire();
-            },
-          });
-          console.log('Widget rendered with ID:', widget);
-        } catch (error) {
-          console.error('Exception rendering Turnstile:', error);
-          setErrorMessage(`Error renderizando: ${error}`);
+    const loadScript = () => {
+      return new Promise((resolve, reject) => {
+        if (window.turnstile) {
+          resolve(true);
+          return;
         }
+
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve(true);
+        script.onerror = () => reject(new Error('Script failed to load'));
+        document.head.appendChild(script);
+      });
+    };
+
+    const renderWidget = async () => {
+      try {
+        await loadScript();
+        setIsLoaded(true);
+        
+        if (window.turnstile && ref.current && !hasRendered) {
+          setTimeout(() => {
+            if (ref.current && !hasRendered) {
+              try {
+                window.turnstile.render(ref.current, {
+                  sitekey: siteKey,
+                  callback: (token: string) => {
+                    onSuccess(token);
+                  },
+                  'error-callback': (error: any) => {
+                    if (onError) onError();
+                  },
+                  'expired-callback': () => {
+                    if (onExpire) onExpire();
+                  },
+                });
+                setHasRendered(true);
+              } catch (error) {
+                console.error('Error rendering Turnstile:', error);
+                if (onError) onError();
+              }
+            }
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error loading Turnstile script:', error);
+        if (onError) onError();
       }
     };
 
-    render();
+    renderWidget();
+  }, [siteKey, onSuccess, onError, onExpire, hasRendered]);
 
-    return () => {
-      if (widget && window.turnstile) {
-        try {
-          window.turnstile.remove(widget);
-        } catch (e) {
-          console.error('Error removing widget:', e);
-        }
-      }
-    };
-  }, [status, siteKey, onSuccess, onError, onExpire]);
-
-  if (status === 'loading') {
+  if (!isLoaded) {
     return (
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <div className="animate-pulse text-sm text-blue-600">
-          Cargando verificación de seguridad...
-        </div>
+      <div className="w-full h-16 bg-gray-100 rounded animate-pulse flex items-center justify-center">
+        <span className="text-sm text-gray-500">Cargando verificación...</span>
       </div>
     );
   }
 
-  if (status === 'error') {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <div className="text-sm text-red-600">
-          Error: {errorMessage}
-          <br />
-          Site Key: {siteKey ? siteKey.substring(0, 20) + '...' : 'No configurada'}
-          <br />
-          Dominio: {typeof window !== 'undefined' ? window.location.hostname : 'Desconocido'}
-        </div>
-      </div>
-    );
-  }
-
-  return <div ref={ref}></div>;
+  return <div ref={ref} className="min-h-[65px]"></div>;
 }
 
 declare global {
