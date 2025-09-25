@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TurnstileProps {
   siteKey: string;
@@ -10,65 +10,96 @@ interface TurnstileProps {
 
 export default function SimpleTurnstile({ siteKey, onSuccess, onError, onExpire }: TurnstileProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const [isRendered, setIsRendered] = useState(false);
 
   useEffect(() => {
-    console.log('Turnstile: Iniciando con siteKey:', siteKey);
-    let widget: string | undefined;
+    // Verificar si el script ya está cargado
+    if (window.turnstile) {
+      setIsScriptLoaded(true);
+      return;
+    }
+
+    // Cargar script manualmente
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
     
-    const renderTurnstile = () => {
-      if (typeof window !== 'undefined' && window.turnstile && ref.current && !widget) {
-        console.log('Turnstile: Renderizando widget');
-        widget = window.turnstile.render(ref.current, {
-          sitekey: siteKey,
-          callback: (token) => {
-            console.log('Turnstile: Éxito, token recibido');
-            onSuccess(token);
-          },
-          'error-callback': (error) => {
-            console.error('Turnstile: Error', error);
-            if (onError) onError();
-          },
-          'expired-callback': () => {
-            console.log('Turnstile: Token expirado');
-            if (onExpire) onExpire();
-          },
-        });
-      }
+    script.onload = () => {
+      setIsScriptLoaded(true);
     };
 
-    // Intentar renderizar inmediatamente
-    renderTurnstile();
+    script.onerror = () => {
+      console.error('Failed to load Turnstile script');
+      if (onError) onError();
+    };
 
-    // Si no funciona, esperar a que el script cargue
-    const interval = setInterval(() => {
-      if (window.turnstile && ref.current && !widget) {
-        renderTurnstile();
-        clearInterval(interval);
-      }
-    }, 100);
-
-    // Limpiar después de 10 segundos
-    const timeout = setTimeout(() => {
-      clearInterval(interval);
-    }, 10000);
+    document.head.appendChild(script);
 
     return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-      if (widget && window.turnstile) {
+      // No remover el script ya que puede ser usado por otros componentes
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isScriptLoaded || !ref.current || isRendered) return;
+
+    let attempts = 0;
+    const maxAttempts = 50;
+
+    const tryRender = () => {
+      if (window.turnstile && ref.current && !isRendered) {
         try {
-          window.turnstile.remove(widget);
-        } catch (e) {
-          // Ignorar errores de cleanup
+          const widget = window.turnstile.render(ref.current, {
+            sitekey: siteKey,
+            callback: (token: string) => {
+              console.log('Turnstile success');
+              onSuccess(token);
+            },
+            'error-callback': (error: any) => {
+              console.error('Turnstile error:', error);
+              if (onError) onError();
+            },
+            'expired-callback': () => {
+              console.log('Turnstile expired');
+              if (onExpire) onExpire();
+            },
+          });
+          
+          setIsRendered(true);
+          console.log('Turnstile rendered successfully');
+          return;
+        } catch (error) {
+          console.error('Error rendering Turnstile:', error);
         }
       }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(tryRender, 100);
+      } else {
+        console.error('Max attempts reached for Turnstile rendering');
+        if (onError) onError();
+      }
     };
-  }, [siteKey, onSuccess, onError, onExpire]);
+
+    tryRender();
+  }, [isScriptLoaded, siteKey, onSuccess, onError, onExpire, isRendered]);
+
+  if (!isScriptLoaded) {
+    return (
+      <div className="p-4 bg-slate-100 rounded-lg">
+        <div className="animate-pulse text-sm text-slate-600">
+          Cargando verificación de seguridad...
+        </div>
+      </div>
+    );
+  }
 
   return <div ref={ref}></div>;
 }
 
-// Declaración de tipos para TypeScript
 declare global {
   interface Window {
     turnstile: {
