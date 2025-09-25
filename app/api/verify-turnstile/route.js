@@ -1,35 +1,42 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// /app/api/verify-turnstile/route.ts
+import { NextResponse } from 'next/server';
 
-  const { token } = req.body;
-
-  if (!token) {
-    return res.status(400).json({ error: 'Token is required' });
-  }
-
+export async function POST(req: Request) {
   try {
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    const { token } = await req.json();
+    if (!token) {
+      return NextResponse.json({ success: false, error: 'missing-token' }, { status: 400 });
+    }
+
+    const secret = process.env.TURNSTILE_SECRET_KEY;
+    if (!secret) {
+      return NextResponse.json({ success: false, error: 'missing-secret' }, { status: 500 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+
+    const formData = new FormData();
+    formData.append('secret', secret);
+    formData.append('response', token);
+    if (ip) formData.append('remoteip', ip);
+
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        secret: process.env.TURNSTILE_SECRET_KEY,
-        response: token,
-      }),
+      body: formData,
     });
 
-    const data = await response.json();
-    
-    if (data.success) {
-      res.status(200).json({ success: true });
-    } else {
-      res.status(400).json({ success: false, error: 'Verification failed' });
+    if (!r.ok) {
+      return NextResponse.json({ success: false, error: 'verify-request-failed' }, { status: 502 });
     }
-  } catch (error) {
-    console.error('Turnstile verification error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+
+    const data = await r.json();
+
+    return NextResponse.json({
+      success: !!data.success,
+      meta: { hostname: data.hostname, errors: data['error-codes'] ?? [] },
+    });
+  } catch (e) {
+    console.error('Turnstile verification error:', e);
+    return NextResponse.json({ success: false, error: 'exception' }, { status: 500 });
   }
 }
