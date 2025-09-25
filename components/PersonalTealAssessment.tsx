@@ -1064,7 +1064,7 @@ if (showWelcome) {
               </label>
               {isClient && (
                 <SimpleTurnstile
-                  siteKey="0x4AAAAAAB3KeyEN4HDKlMUx"
+                  siteKey="1x00000000000000000000AA"
                   onSuccess={(token) => {
                     setTurnstileToken(token);
                     setTurnstileError('');
