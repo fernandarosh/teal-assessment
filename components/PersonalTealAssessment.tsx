@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, RotateCcw, CheckCircle2, Circle, Download } from 'lucide-react';
+import SimpleTurnstile from './SimpleTurnstile';
+
 
 // Importar html2pdf dinámicamente
 let html2pdf: unknown = null;
@@ -394,6 +396,8 @@ const PersonalTealAssessment = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [shuffledQuestions, setShuffledQuestions] = useState(questions);
   const [isClient, setIsClient] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileError, setTurnstileError] = useState('');
   const [userInfo, setUserInfo] = useState({
     nombre: '',
     apellidos: '',
@@ -480,6 +484,8 @@ const PersonalTealAssessment = () => {
       apellidos: '',
       correo: ''
     });
+    setTurnstileToken('');
+    setTurnstileError('');
     // Re-shuffle las preguntas cuando se resetea
     setShuffledQuestions(
       questions.map(question => ({
@@ -489,16 +495,53 @@ const PersonalTealAssessment = () => {
     );
   };
 
-  const handleStartClick = () => {
+  // Función para validar email
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleStartClick = async () => {
     const nombre = userInfo.nombre && userInfo.nombre.trim();
     const apellidos = userInfo.apellidos && userInfo.apellidos.trim();
     const correo = userInfo.correo && userInfo.correo.trim();
     
-    if (nombre && apellidos && correo) {
-      setShowWelcome(false);
-    } else {
+    if (!nombre || !apellidos || !correo) {
       alert('Por favor, completa todos los campos requeridos.');
+      return;
     }
+    
+    if (!isValidEmail(correo)) {
+      alert('Por favor, ingresa un correo electrónico válido.');
+      return;
+    }
+
+    if (!turnstileToken) {
+      alert('Por favor, completa la verificación de seguridad.');
+      return;
+    }
+
+    // Verificar el token de Turnstile
+    try {
+      const response = await fetch('/api/verify-turnstile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: turnstileToken }),
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        setTurnstileError('Verificación de seguridad fallida. Por favor, intenta de nuevo.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error verificando Turnstile:', error);
+      alert('Error en la verificación de seguridad. Por favor, intenta de nuevo.');
+      return;
+    }
+    
+    setShowWelcome(false);
   };
 
   const handleUserInfoChange = (field, value) => {
@@ -946,7 +989,9 @@ const generatePDF = async () => {
 if (showWelcome) {
   const isFormValid = userInfo.nombre && userInfo.nombre.trim() && 
                       userInfo.apellidos && userInfo.apellidos.trim() && 
-                      userInfo.correo && userInfo.correo.trim();
+                      userInfo.correo && userInfo.correo.trim() && 
+                      isValidEmail(userInfo.correo) && 
+                      turnstileToken;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -999,9 +1044,47 @@ if (showWelcome) {
                 type="email"
                 value={userInfo.correo}
                 onChange={(e) => handleUserInfoChange('correo', e.target.value)}
-                className="w-full px-4 py-3 bg-white/50 border-0 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:bg-white/80 outline-none transition-all duration-200 text-slate-900 placeholder-slate-400"
+                className={`w-full px-4 py-3 bg-white/50 border-0 rounded-xl focus:ring-2 focus:bg-white/80 outline-none transition-all duration-200 text-slate-900 placeholder-slate-400 ${
+                  userInfo.correo && !isValidEmail(userInfo.correo) 
+                    ? 'focus:ring-red-500/20 ring-2 ring-red-500/20' 
+                    : 'focus:ring-blue-500/20'
+                }`}
                 placeholder="ejemplo@correo.com"
               />
+              {userInfo.correo && !isValidEmail(userInfo.correo) && (
+                <p className="text-red-500 text-xs mt-2">
+                  Por favor, ingresa un correo electrónico válido
+                </p>
+              )}
+            </div>
+
+            {/* Turnstile CAPTCHA */}
+            <div className="pt-4">
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Verificación de seguridad
+              </label>
+              {isClient && (
+                <SimpleTurnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAB3KeyEN4HDKlMUx"}
+                  onSuccess={(token) => {
+                    setTurnstileToken(token);
+                    setTurnstileError('');
+                  }}
+                  onError={() => {
+                    setTurnstileError('Error en la verificación. Intenta refrescar la página.');
+                    setTurnstileToken('');
+                  }}
+                  onExpire={() => {
+                    setTurnstileToken('');
+                    setTurnstileError('La verificación ha expirado. Por favor, complétala nuevamente.');
+                  }}
+                />
+              )}
+              {turnstileError && (
+                <p className="text-red-500 text-xs mt-2">
+                  {turnstileError}
+                </p>
+              )}
             </div>
 
             <button
