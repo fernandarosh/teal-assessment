@@ -392,12 +392,8 @@ const questions = [
   
 const PersonalTealAssessment = () => {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [shuffledQuestions] = useState(() => 
-    questions.map(question => ({
-      ...question,
-      options: [...question.options].sort(() => Math.random() - 0.5)
-    }))
-  );
+  const [shuffledQuestions, setShuffledQuestions] = useState(questions);
+  const [isClient, setIsClient] = useState(false);
   const [userInfo, setUserInfo] = useState({
     nombre: '',
     apellidos: '',
@@ -409,6 +405,17 @@ const PersonalTealAssessment = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  // Efecto para inicializar el shuffling solo en el cliente
+  React.useEffect(() => {
+    setIsClient(true);
+    setShuffledQuestions(
+      questions.map(question => ({
+        ...question,
+        options: [...question.options].sort(() => Math.random() - 0.5)
+      }))
+    );
+  }, []);
 
   const colorProfiles = {
     "Rojo": {
@@ -473,6 +480,13 @@ const PersonalTealAssessment = () => {
       apellidos: '',
       correo: ''
     });
+    // Re-shuffle las preguntas cuando se resetea
+    setShuffledQuestions(
+      questions.map(question => ({
+        ...question,
+        options: [...question.options].sort(() => Math.random() - 0.5)
+      }))
+    );
   };
 
   const handleStartClick = () => {
@@ -1133,6 +1147,18 @@ if (showResults) {
 const startIndex = currentPage * questionsPerPage;
 const endIndex = Math.min(startIndex + questionsPerPage, shuffledQuestions.length);
 const currentQuestions = shuffledQuestions.slice(startIndex, endIndex);
+
+// Si aún no se ha inicializado en el cliente, mostrar un loading
+if (!isClient) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-600">Preparando evaluación...</p>
+      </div>
+    </div>
+  );
+}
 
 return (
   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
