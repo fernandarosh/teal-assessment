@@ -1,7 +1,6 @@
-// /app/api/verify-turnstile/route.ts
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+export async function POST(req) {
   try {
     const { token } = await req.json();
     if (!token) {
