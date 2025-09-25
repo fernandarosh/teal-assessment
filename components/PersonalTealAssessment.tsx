@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronRight, ChevronLeft, RotateCcw, CheckCircle2, Circle, Download } from 'lucide-react';
+import SimpleTurnstile from './SimpleTurnstile';
 
 // Importar html2pdf dinámicamente
 let html2pdf: unknown = null;
