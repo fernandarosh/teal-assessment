@@ -12,15 +12,26 @@ export default function SimpleTurnstile({ siteKey, onSuccess, onError, onExpire 
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log('Turnstile: Iniciando con siteKey:', siteKey);
     let widget: string | undefined;
     
     const renderTurnstile = () => {
       if (typeof window !== 'undefined' && window.turnstile && ref.current && !widget) {
+        console.log('Turnstile: Renderizando widget');
         widget = window.turnstile.render(ref.current, {
           sitekey: siteKey,
-          callback: onSuccess,
-          'error-callback': onError,
-          'expired-callback': onExpire,
+          callback: (token) => {
+            console.log('Turnstile: Éxito, token recibido');
+            onSuccess(token);
+          },
+          'error-callback': (error) => {
+            console.error('Turnstile: Error', error);
+            if (onError) onError();
+          },
+          'expired-callback': () => {
+            console.log('Turnstile: Token expirado');
+            if (onExpire) onExpire();
+          },
         });
       }
     };
